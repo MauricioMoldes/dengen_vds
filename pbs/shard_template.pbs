@@ -1,0 +1,31 @@
+#!/bin/bash
+#PBS -N dengen_shard_{{SHARD_INDEX}}
+#PBS -A external-rh_rh_gm
+#PBS -l select=1:ncpus=8:mem=64gb
+#PBS -l walltime=600:00:00
+#PBS -j oe
+#PBS -o /ngc/projects2/gm/people/mauqua/hail-singularity/logs/shards/shard_{{SHARD_INDEX}}.log
+
+cd /ngc/projects2/gm/people/mauqua/hail-singularity
+
+export PYTHONPATH=/ngc/projects2/gm/people/mauqua/hail-singularity/src:$PYTHONPATH
+
+echo "Running shard {{SHARD_INDEX}} on $(hostname)"
+
+export PYSPARK_SUBMIT_ARGS="\
+--driver-memory 32G \
+--executor-memory 32G \
+--conf spark.executor.cores=4 \
+--conf spark.executor.instances=2 \
+--conf spark.sql.shuffle.partitions=128 \
+pyspark-shell"
+
+singularity exec \
+  --env PYSPARK_SUBMIT_ARGS="$PYSPARK_SUBMIT_ARGS" \
+  --bind ./data/dengen_data:/data \
+  --bind ./src:/src \
+  --bind ./results:/results \
+  --bind ./config:/config \
+  --bind ./tmp:/tmp \
+  ./bin/hail_0.2.136-py3.13.sif \
+  python3 /src/shard/dengen_shard.py {{SHARD_INDEX}}

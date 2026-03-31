@@ -1,0 +1,14 @@
+project: dengen_vds
+
+reference: GRCh38
+
+sharding:
+  shard_size: 200
+  gvcf_batch_size: 25
+
+
+paths:
+  base: /data
+  results: /results
+  tmp: /tmp
+  samples: /config/dengen_list_of_samples.txt

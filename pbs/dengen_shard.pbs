@@ -1,0 +1,36 @@
+#!/bin/bash
+#PBS -A external-rh_rh_gm              # Billing/accounting info
+#PBS -N dengen_shards
+#PBS -t 0-119%10                        # 120 shards, 10 run concurrently
+#PBS -l nodes=1:ppn=32                  # 32 cores per job
+#PBS -l mem=256gb                        # 256GB per job
+#PBS -l walltime=48:00:00
+#PBS -j oe
+#PBS -o /ngc/projects2/gm/people/mauqua/hail-singularity/logs/shards/shard_$PBS_ARRAY_INDEX.log
+#PBS -e /ngc/projects2/gm/people/mauqua/hail-singularity/logs/shards/shard_$PBS_ARRAY_INDEX.err
+
+cd $PBS_O_WORKDIR
+
+echo "Running shard $PBS_ARRAY_INDEX on $(hostname)"
+
+# Spark config
+export PYSPARK_SUBMIT_ARGS="\
+--driver-memory 64G \
+--executor-memory 64G \
+--conf spark.executor.cores=8 \
+--conf spark.executor.instances=4 \
+--conf spark.sql.shuffle.partitions=512 \
+--conf spark.default.parallelism=512 \
+--conf spark.local.dir=/tmp \
+pyspark-shell"
+
+# Run inside Singularity
+singularity exec \
+  --env PYSPARK_SUBMIT_ARGS="$PYSPARK_SUBMIT_ARGS" \
+  --bind /ngc/projects2/gm/people/mauqua/hail-singularity/data/dengen_data:/data \
+  --bind /ngc/projects2/gm/people/mauqua/hail-singularity/src:/src \
+  --bind /ngc/projects2/gm/people/mauqua/hail-singularity/results:/results \
+  --bind /ngc/projects2/gm/people/mauqua/hail-singularity/config:/config \
+  --bind /ngc/projects2/gm/people/mauqua/hail-singularity/tmp:/tmp \
+  /ngc/projects2/gm/people/mauqua/hail-singularity/container/hail_0.2.136-py3.13.sif \
+  python3 /src/shard/dengen_shard.py $PBS_ARRAY_INDEX
