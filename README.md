@@ -7,7 +7,7 @@ It is designed to process large cohorts (e.g., 24K+ genomes) efficiently on HPC 
 This approach follows the same principles used by large-scale projects such as gnomAD, adapted for the **DenGen Danish population genomics project**.
 
 ## Project Structure
-
+```
 dengen_vds/
 ├── config/
 │   └── config.yaml          # Central configuration (paths, sharding, reference)
@@ -29,6 +29,8 @@ dengen_vds/
 │   └── final/               # Final merged VDS
 ├── tmp/                     # Temporary files for Hail/Spark
 └── README.md
+```
+
 
 > **Note:** This repository does not include raw gVCFs, sample lists, or container images.
 
