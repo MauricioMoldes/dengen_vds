@@ -1,0 +1,71 @@
+#!/bin/bash
+#PBS -N dengen_scheduler
+#PBS -A external-rh_rh_gm
+#PBS -l select=1:ncpus=1:mem=4gb
+#PBS -l walltime=600:00:00
+#PBS -j oe
+#PBS -o /ngc/projects2/gm/people/mauqua/hail-singularity/logs/scheduler.log
+
+cd /ngc/projects2/gm/people/mauqua/hail-singularity
+
+echo "Starting DenGen shard scheduler..."
+
+# CONFIG
+MAX_RUNNING=25
+TOTAL_SHARDS=120
+
+SHARD_RESULTS=/ngc/projects2/gm/people/mauqua/hail-singularity/results/shards
+PBS_DIR=/ngc/projects2/gm/people/mauqua/hail-singularity/pbs
+
+SLEEP_TIME=1800   # seconds
+
+while true; do
+
+    echo "---- $(date) ----"
+
+    # Count running shard jobs
+    RUNNING=$(qstat -u mauqua | grep dengen_shard | grep " R " | wc -l)
+    echo "Currently running shards: $RUNNING"
+
+    # If below threshold → submit more
+    if [ "$RUNNING" -lt "$MAX_RUNNING" ]; then
+
+        AVAILABLE=$((MAX_RUNNING - RUNNING))
+        echo "Can submit up to $AVAILABLE shards"
+
+        TMP_FILE=$(mktemp)
+
+        # Find missing shards (no directory = never started)
+        i=0
+        while [ "$i" -lt "$TOTAL_SHARDS" ]; do
+            shard_dir="${SHARD_RESULTS}/dengen_shard_${i}.vds"
+
+            if [ ! -d "$shard_dir" ]; then
+                echo "${PBS_DIR}/shard_${i}.pbs" >> "$TMP_FILE"
+            fi
+
+            i=$((i + 1))
+        done
+
+        # Submit up to AVAILABLE shards randomly
+        shuf "$TMP_FILE" | head -n "$AVAILABLE" | while read -r pbs_file; do
+            if [ -f "$pbs_file" ]; then
+                qsub "$pbs_file"
+                echo "Submitted $pbs_file"
+            fi
+        done
+
+        rm "$TMP_FILE"
+    fi
+
+    # Exit condition: all shards exist
+    TOTAL_DONE=$(ls -1 "$SHARD_RESULTS" | wc -l)
+
+    if [ "$TOTAL_DONE" -ge "$TOTAL_SHARDS" ]; then
+        echo "All shards have been created. Exiting scheduler."
+        break
+    fi
+
+    sleep $SLEEP_TIME
+
+done
