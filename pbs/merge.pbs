@@ -1,0 +1,31 @@
+#!/bin/bash
+#PBS -N dengen_merge
+#PBS -A external-rh_rh_gm
+#PBS -l select=1:ncpus=32:mem=256gb
+#PBS -l walltime=600:00:00
+#PBS -j oe
+#PBS -o /ngc/projects2/gm/people/mauqua/hail-singularity/logs/merge.log
+
+cd /ngc/projects2/gm/people/mauqua/hail-singularity
+
+export PYTHONPATH=./src:$PYTHONPATH
+
+export PYSPARK_SUBMIT_ARGS="\
+--driver-memory 128G \
+--executor-memory 64G \
+--conf spark.executor.cores=8 \
+--conf spark.executor.instances=4 \
+--conf spark.sql.shuffle.partitions=512 \
+pyspark-shell"
+
+echo "Starting merge on $(hostname)"
+
+singularity exec \
+  --env PYSPARK_SUBMIT_ARGS="$PYSPARK_SUBMIT_ARGS" \
+  --bind ./data/dengen_data:/data \
+  --bind ./src:/src \
+  --bind ./results:/results \
+  --bind ./config:/config \
+  --bind ./tmp:/tmp \
+  ./bin/hail_0.2.136-py3.13.sif \
+  python3 /src/merge/dengen_merge.py
